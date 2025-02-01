@@ -1,12 +1,14 @@
+from typing import cast
 from . import scanner
 from .decoder import parser
 from .encoder import encode
 
 
-def loads(string):
+def loads(string: str):
     lexer = scanner.lexer()
     yacc = parser()
-    return yacc.parse(string, lexer)
+
+    return cast(scanner.LexToken | None, yacc.parse(string, lexer))
 
 
 def load(fp):
