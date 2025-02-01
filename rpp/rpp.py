@@ -1,4 +1,6 @@
 from typing import cast
+
+from rpp.element import Element
 from . import scanner
 from .decoder import parser
 from .encoder import encode
@@ -8,7 +10,7 @@ def loads(string: str):
     lexer = scanner.lexer()
     yacc = parser()
 
-    return cast(scanner.LexToken | None, yacc.parse(string, lexer))
+    return cast(Element | None, yacc.parse(string, lexer))
 
 
 def load(fp):
