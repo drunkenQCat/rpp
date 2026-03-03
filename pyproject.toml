@@ -20,7 +20,7 @@ classifiers = [
 ]
 dependencies = [
     "attrs",
-    "ply",
+    "lark>=1.1.9",
 ]
 
 [project.urls]
@@ -33,3 +33,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
 version = {attr = "rpp.__version__"}
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.408",
+]
+
+[tool.setuptools]
+packages = ["rpp"]
