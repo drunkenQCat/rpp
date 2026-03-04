@@ -1,201 +1,113 @@
 """
-Complete Lark-based RPP parser implementation
-This replicates the functionality of the original PLY-based parser
+RPP parser implementation using Lark
+
+This module provides the public API for parsing RPP files.
+The actual parsing is done by lark_parser.py using the Lark grammar.
 """
 
 from __future__ import annotations
 
-from typing import Generator, List, Optional, TextIO, Union
+import re
+from typing import List, TextIO, Union, Iterator
+
+from lark import Token
 
 from .element import Element
+from .lark_parser import loads as _lark_loads, load as _lark_load
+from .encoder import encode
 
 
-class Token:
-    """Simple token class"""
+# Token patterns for RPP tokenizer
+# Order matters: more specific patterns first
+_TOKEN_PATTERN = re.compile(
+    r"(<|>)"
+    r"|(\|[^\n]*)"
+    r'|("[^"]*")'
+    r"|('[^']*')"
+    r"|(`[^`]*`)"
+    r"|(\n)"
+    r"|(\s+)"
+    r'|([^\s<>""]+)'
+)
 
-    def __init__(self, type_: str, value: str) -> None:
-        self.type = type_
-        self.value = value
 
-    def __repr__(self) -> str:
-        return f"Token({self.type!r}, {self.value!r})"
+def tokenize(string: str) -> Iterator[Token]:
+    """Tokenize RPP content
 
+    Args:
+        string: RPP content to tokenize
 
-def tokenize(string: str) -> Generator[Token, None, None]:
+    Yields:
+        Token objects
     """
-    Tokenize RPP content similar to the original PLY scanner.
-    This is a line-based tokenizer.
-    """
-    lines = string.splitlines()
-    for lineno, line in enumerate(lines, start=1):
-        is_first_token_in_line = True
-        while line:
-            line = line.strip()
-            if not line:
-                break
+    # Find all tokens using regex
+    pos = 0
+    while pos < len(string):
+        match = _TOKEN_PATTERN.match(string, pos)
+        if not match:
+            pos += 1
+            # Get the first non-empty group
+            value = None
+            for group in match.groups():
+                if group:
+                    value = group
+                    break
 
-            # Check for quoted strings (must check before special chars)
-            if line[0] in ('"', "'", "`"):
-                quote = line[0]
-                try:
-                    quote_end = line.index(quote, 1)
-                    yield Token("STRING", line[1:quote_end])
-                    line = line[quote_end + 1 :]
-                except ValueError:
-                    # No closing quote, treat rest as string
-                    yield Token("STRING", line[1:])
-                    line = ""
-            elif is_first_token_in_line:
-                if line.startswith("<"):
-                    yield Token("OPEN", "<")
-                    line = line[1:]
-                elif line.startswith(">"):
-                    yield Token("CLOSE", ">")
-                    line = line[1:]
-                elif line.startswith("|"):
-                    # Pipe-prefixed line, treat as string
-                    yield Token("STRING", line)
-                    line = ""
-                else:
-                    # Regular string token
-                    parts = line.split(maxsplit=1)
-                    if len(parts) > 1:
-                        thing, rest = parts
-                    else:
-                        thing, rest = parts[0], ""
-                    yield Token("STRING", thing)
-                    line = rest
+            if value is None:
+                pos += 1
+                continue
+
+            # Determine token type based on value
+            if value == "<":
+                token_type = "LESSTHAN"
+            elif value == ">":
+                token_type = "MORETHAN"
+            elif value.startswith('"') and value.endswith('"'):
+                # Strip quotes for ESCAPED_STRING
+                token_type = "ESCAPED_STRING"
+                value = value[1:-1]
+            elif value.startswith("'") and value.endswith("'"):
+                # Strip quotes for ESCAPED_STRING
+                token_type = "ESCAPED_STRING"
+                value = value[1:-1]
+            elif value.startswith("`") and value.endswith("`"):
+                # Strip quotes for BACKQUOTED_NAME
+                token_type = "BACKQUOTED_NAME"
+                value = value[1:-1]
+            elif value == "\n":
+                token_type = "NEWLINE"
+            elif value.strip():
+                token_type = "UNQUOTED"
             else:
-                # Not first token - split by whitespace
-                parts = line.split(maxsplit=1)
-                if len(parts) > 1:
-                    thing, rest = parts
-                else:
-                    thing, rest = parts[0], ""
-                yield Token("STRING", thing)
-                line = rest
+                token_type = "WHITESPACE"
 
-            is_first_token_in_line = False
+            # Skip whitespace tokens
+            if token_type != "WHITESPACE":
+                yield Token(token_type, value, pos)
+            pos = match.end()
+        else:
+            # No match, move forward one character
+            pos += 1
 
-        yield Token("NEWLINE", "\n")
+    # Always add a trailing newline token
+    yield Token("NEWLINE", "\n", pos)
 
 
 def loads(string: str) -> Element:
     """Load RPP content from string"""
-    # Tokenize the input
-    tokens = list(tokenize(string))
-    return _parse_tokens(tokens)
-
-
-def _parse_tokens(tokens: List[Token]) -> Element:
-    """Parse tokens into Element structure using recursive descent"""
-    pos = [0]  # Use list for mutable reference
-
-    def peek() -> Optional[Token]:
-        if pos[0] < len(tokens):
-            return tokens[pos[0]]
-        return None
-
-    def consume() -> Optional[Token]:
-        token = peek()
-        if token:
-            pos[0] += 1
-        return token
-
-    def parse_tree() -> Element:
-        token = consume()
-        if not token or token.type != "OPEN":
-            raise ValueError(f"Expected OPEN token, got {token}")
-
-        # Parse tag and attributes
-        tag: Optional[str] = None
-        attrib: List[str] = []
-        children: List[Union[str, List[str], Element]] = []
-
-        while True:
-            token = peek()
-            if not token:
-                raise ValueError("Unexpected end of input")
-
-            if token.type == "STRING":
-                consume()
-                if tag is None:
-                    tag = token.value
-                else:
-                    attrib.append(token.value)
-            elif token.type == "NEWLINE":
-                consume()
-                # After newline, we might have children or close
-                while True:
-                    token = peek()
-                    if not token:
-                        raise ValueError("Unexpected end of input")
-
-                    if token.type == "CLOSE":
-                        break
-                    elif token.type == "OPEN":
-                        # Nested tree
-                        children.append(parse_tree())
-                        # Consume the newline after the nested tree
-                        next_token = peek()
-                        if next_token and next_token.type == "NEWLINE":
-                            consume()
-                    elif token.type == "STRING":
-                        # Simple list
-                        children.append(parse_simple_list())
-                    else:
-                        consume()
-            elif token.type == "CLOSE":
-                consume()
-                break
-            else:
-                consume()
-
-        # tag should never be None here if parsing succeeded
-        assert tag is not None, "Tag should have been parsed"
-        return Element(tag=tag, attrib=tuple(attrib), children=children)
-
-    def parse_simple_list() -> Union[str, List[str]]:
-        items: List[str] = []
-        while True:
-            token = peek()
-            if not token or token.type != "STRING":
-                break
-            consume()
-            items.append(token.value)
-
-        # Consume the trailing newline
-        next_token = peek()
-        if next_token and next_token.type == "NEWLINE":
-            consume()
-
-        # If only one item, return it directly (not wrapped in a list)
-        if len(items) == 1:
-            return items[0]
-        return items
-
-    # Skip leading newlines
-    next_token = peek()
-    while next_token and next_token.type == "NEWLINE":
-        consume()
-        next_token = peek()
-
-    return parse_tree()
+    return _lark_loads(string)
 
 
 def load(fp: TextIO) -> Element:
     """Load RPP content from file pointer"""
-    return loads(fp.read())
+    return _lark_load(fp)
 
 
-def dumps(lists: Union[Element, List], indent: int = 2) -> str:
+def dumps(lists: Union[Element, List[Element]], indent: int = 2) -> str:
     """Dump RPP content to string"""
-    from .encoder import encode
-
     return encode(lists, indent=indent)
 
 
-def dump(lists: Union[Element, List], fp: TextIO, indent: int = 2) -> None:
+def dump(lists: Union[Element, List[Element]], fp: TextIO, indent: int = 2) -> None:
     """Dump RPP content to file pointer"""
     fp.write(dumps(lists, indent))
-

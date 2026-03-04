@@ -1,0 +1,26 @@
+start: (event | WS)+
+
+// 优先级：特定事件 > 通用事件
+?event: note_on
+      | note_off
+      | control_change
+      | other_event
+
+// 终端定义：把状态位的前半部分直接写死在正则里
+NOTE_ON_STATUS.2:       /9[0-9A-Fa-f]/
+NOTE_OFF_STATUS.2:      /8[0-9A-Fa-f]/
+CC_STATUS.2:            /b[0-9A-Fa-f]/
+ANY_STATUS.1:           /[0-9A-Fa-f]{2}/
+
+// 规则定义
+note_on: PREFIX DELTA NOTE_ON_STATUS HEX_BYTE HEX_BYTE
+note_off: PREFIX DELTA NOTE_OFF_STATUS HEX_BYTE HEX_BYTE
+control_change: PREFIX DELTA CC_STATUS HEX_BYTE HEX_BYTE
+other_event: PREFIX DELTA ANY_STATUS HEX_BYTE HEX_BYTE
+
+PREFIX: "E" | "e"
+DELTA: /[0-9]+/
+HEX_BYTE: /[0-9A-Fa-f]{2}/
+
+%import common.WS
+%ignore WS

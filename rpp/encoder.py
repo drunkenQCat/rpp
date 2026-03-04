@@ -52,6 +52,9 @@ def quote_string(value: str, quote_pipe: bool = True) -> str:
 
 
 def should_quote(s: str, quote_pipe: bool) -> bool:
+    # 如果字符串包含 ::，说明是扩展行，不需要引号
+    if "::" in s:
+        return False
     return (quote_pipe or not starts_with_pipe(s)) and (
         starts_with_quote(s) or has_whitespace(s)
     )

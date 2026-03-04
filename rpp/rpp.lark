@@ -1,0 +1,122 @@
+// RPP Grammar for Lark
+// Based on the tokenize() function from rpp.py
+?start: element
+
+element: OPEN struct NEWLINE [content_lines] CLOSE NEWLINE?
+struct: tag attr_list
+tag: TAG
+// TAG can be uppercase letters followed by optional digits or uppercase letters (e.g., VOLENV2, RENDER_1X)
+TAG: (MORE_THAN_ONE_UPPER|"_")+ /[0-9A-Z]*/
+attr_list: parameter*
+?parameter: EMPTY_STR           -> empty_string
+          | ESCAPED_STRING  -> string
+          | SINGLE_QUOTED_STR -> single_quoted_string
+          | SIGNED_FLOAT    -> float_num
+          | SIGNED_INT      -> int_num
+          | UNQUOTED       -> unquoted
+          | dynamic_link       -> string
+          | js_fx_name          -> string
+          | pattern             -> string
+          | guid                -> string
+          | aux_info
+          | parmenv_info
+          | vst_quoted_string   -> string
+dynamic_link: UNQUOTED"."UNQUOTED
+js_fx_name: UNQUOTED"/"UNQUOTED
+pattern: "$"UNQUOTED
+guid: "{" UNQUOTED "}"
+aux_info: SIGNED_INT":"UCASE_LETTER
+parmenv_info: SIGNED_INT":"UNQUOTED
+vst_quoted_string: SIGNED_INT"<"HEADLESS_HEX_NUMBER">"
+// Extension line: handles lines like "TabEditor22 serialization::archive 7 0"
+// Matches the entire line as a string if it contains ::
+ext_line: /[A-Za-z0-9_ ]+::[A-Za-z0-9_ :]+/
+
+
+content_lines: (content NEWLINE)+
+content: ext_line
+       | element
+       | compressed
+       | name_field
+       | midi_event
+       | struct_as_content
+       | js_parameter_list
+       | NOTE -> note_line
+       | keysig
+       | auto_color
+
+midi_event: _midi_event
+struct_as_content: tag attr_list
+js_parameter_list: js_parameter+
+js_parameter: SIGNED_FLOAT -> js_float_num
+            | EMPTY_PARAM -> empty_param
+// note: pipe followed by optional content
+NOTE: /\|[^\n]*/
+keysig: SIGNED_INT SIGNED_INT SIGNED_INT HEX_NUMBER
+auto_color: guid SIGNED_INT string_in_quotes~3
+string_in_quotes: ESCAPED_STRING|EMPTY_STR
+any.-1: _any
+
+// processing of name field, which can be either backquoted or unquoted
+// Priority .4 to match before compressed (which is .3)
+name_field.4: "NAME" _WS name_value
+
+?name_value: BACKQUOTED_NAME
+            | UNQUOTED_NAME
+
+// 优先级 .2：如果开头是反引号，优先走这个规则
+BACKQUOTED_NAME.2: /`[^`\n\r]*`/
+
+// 优先级 .1：匹配任何非空白字符开头的连续字符串
+// 我们不再排除 `，只排除空白，这样中间的反引号也能被吞掉
+UNQUOTED_NAME.1: /[^\s][^\s]*/
+
+// processing of base64 data, which can be either a single line or multiple lines
+compressed.3: (base64_string NEWLINE?)+
+base64_string: full_groups padding?
+full_groups: (BASE64_GROUP)+
+
+BASE64_GROUP: BASE64_CHAR BASE64_CHAR BASE64_CHAR BASE64_CHAR
+
+padding: BASE64_CHAR BASE64_CHAR PADDING
+       | BASE64_CHAR BASE64_CHAR BASE64_CHAR PADDING
+
+BASE64_CHAR: /[A-Za-z0-9+\/]/
+PADDING: "=" | "=="
+HEX_NUMBER: /0x[0-9a-fA-F]+/
+HEADLESS_HEX_NUMBER: /[0-9a-fA-F]+/
+SINGLE_QUOTED_STR: /'[^'\r\n]*'/
+UNQUOTED: (BASE64_CHAR|"-"|"_"|".")+
+SIGNED_INT.1 :_SIGNED_INT
+SIGNED_FLOAT.2 : _SIGNED_FLOAT
+
+
+OPEN.1: /(?m)^[ \t]*</
+CLOSE.1: /(?m)^[ \t]*>/
+// OPEN: /(?m)^[ \t]*/? "<"
+// CLOSE: /(?m)^[ \t]*/? ">"
+EMPTY_STR: "\"\"" | "''"
+EMPTY_PARAM: "-"
+MORE_THAN_ONE_UPPER: /[A-Z]{2,}/
+%import common.ESCAPED_STRING
+%import common.SIGNED_INT -> _SIGNED_INT
+%import common.SIGNED_FLOAT -> _SIGNED_FLOAT
+%import common.WS -> _WS
+%import common.UCASE_LETTER
+%import common.NEWLINE
+%import .midi.event -> _midi_event
+
+// Define _any directly instead of importing from any.lark
+_any: (quoted_any | unquoted_any)+
+
+// 1. 带引号的任意内容（处理带空格的路径/名字）
+?quoted_any: /"[^"\n]*"/
+           | /'[^'\n]*'/
+           | /`[^`\n]*`/
+
+// 2. 不带引号的任意内容（处理数字、十六进制、简单单词）
+// 排除以 | 开头的字符串（这是 note 规则的内容）
+?unquoted_any: /[^\s"'`|][^\s]*/
+
+%ignore /[ \t]/+
+
