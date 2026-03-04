@@ -2,7 +2,7 @@ RPP
 ===
 
 RPP is a format used to describe `REAPER <http://reaper.fm>`_ projects. This package is designed to be an RPP
-parser/emitter and uses `PLY <http://www.dabeaz.com/ply/>`_ as a parser framework.
+parser/emitter with a custom line-based tokenizer.
 
 Examples
 --------
@@ -25,7 +25,7 @@ Decode RPP:
    >
    """)
    >>> r
-   Element(tag='REAPER_PROJECT', attrib=['0.1', '4.32', '1372525904'], children=[
+   Element(tag='REAPER_PROJECT', attrib=('0.1', '4.32', '1372525904'), children=[
        ['RIPPLE', '0'],
        ['GROUPOVERRIDE', '0', '0', '0'],
        ['AUTOXFADE', '1'],
@@ -37,7 +37,7 @@ Transform elements into RPP:
 
    >>> from rpp import Element
    >>> rpp.dumps(
-   ...     Element(tag='REAPER_PROJECT', attrib=['0.1', '4.32', '1372525904'], children=[
+   ...     Element(tag='REAPER_PROJECT', attrib=('0.1', '4.32', '1372525904'), children=[
    ...         ['RIPPLE', '0'],
    ...         ['GROUPOVERRIDE', '0', '0', '0'],
    ...         ['AUTOXFADE', '1'],
@@ -56,7 +56,7 @@ Transform elements into RPP:
    ['GROUPOVERRIDE', '0', '0', '0']
    >>> groupoverride[1:] = ['9', '9', '9']
    >>> r
-   Element(tag='REAPER_PROJECT', attrib=['0.1', '4.32', '1372525904'], children=[
+   Element(tag='REAPER_PROJECT', attrib=('0.1', '4.32', '1372525904'), children=[
        ['RIPPLE', '0'],
        ['GROUPOVERRIDE', '9', '9', '9'],
        ['AUTOXFADE', '1'],
@@ -65,5 +65,4 @@ Transform elements into RPP:
 Dependencies
 ------------
 
-- `attrs <https://attrs.readthedocs.org/>`_
-- `ply <http://www.dabeaz.com/ply/>`_
+- `lark >= 1.1.9 <https://github.com/lark-parser/lark>`_
