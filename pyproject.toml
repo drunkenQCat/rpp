@@ -19,7 +19,6 @@ classifiers = [
     "Topic :: Text Processing",
 ]
 dependencies = [
-    "attrs",
     "lark>=1.1.9",
 ]
 

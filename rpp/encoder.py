@@ -1,73 +1,85 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
-from decimal import Decimal
+from typing import Union
 
 from .element import Element
-from .scanner import starts_with_quote, starts_with_pipe
 
 
-def encode(element, indent=2, level=0):
-    result = ' ' * level * indent
+def encode(element: Union[Element, str, list], indent: int = 2, level: int = 0) -> str:
+    result = " " * level * indent
     if isinstance(element, Element):
-        result += '<'
+        result += "<"
         result += encode_tag_and_attrib(element)
         for item in element:
-            result += encode(item, level=level+1)
-        result += ' ' * level * indent + '>\n'
+            result += encode(item, level=level + 1)
+        result += " " * level * indent + ">\n"
     elif isinstance(element, str):
-        result += quote_string(element, quote_pipe=False) + '\n'
+        result += quote_string(element, quote_pipe=False) + "\n"
     else:
-        result += encode_value(element) + '\n'
+        result += encode_value(element) + "\n"
     return result
 
 
-def encode_tag_and_attrib(element):
+def encode_tag_and_attrib(element: Element) -> str:
     result = element.tag
     if element.attrib:
-        result += ' ' + encode_iterable(element.attrib)
-    result += '\n'
+        result += " " + encode_iterable(element.attrib)
+    result += "\n"
     return result
 
 
-def encode_value(value):
+def encode_value(value: Union[str, Iterable, object]) -> str:
     if isinstance(value, str):
         return quote_string(value)
     elif isinstance(value, Iterable):
         return encode_iterable(value)
-    elif isinstance(value, Decimal):
-        return quote_string(format(value, 'f'))
     else:
         return quote_string(str(value))
 
 
-def encode_iterable(iterable):
-    return ' '.join(map(encode_value, iterable))
+def encode_iterable(iterable: Iterable) -> str:
+    return " ".join(map(encode_value, iterable))
 
 
-def quote_string(value, quote_pipe=True):
+def quote_string(value: str, quote_pipe: bool = True) -> str:
     if not value:
         return '""'
     if not should_quote(value, quote_pipe):
         return value
-    quote, value = quote_mark(value)
-    return '{quote}{value}{quote}'.format(quote=quote, value=value)
+    quote, quoted_value = quote_mark(value)
+    return f"{quote}{quoted_value}{quote}"
 
 
-def should_quote(s, quote_pipe):
-    return (quote_pipe or not starts_with_pipe(s)) and (starts_with_quote(s) or has_whitespace(s))
+def should_quote(s: str, quote_pipe: bool) -> bool:
+    return (quote_pipe or not starts_with_pipe(s)) and (
+        starts_with_quote(s) or has_whitespace(s)
+    )
 
 
-def has_whitespace(s):
-    whitespace = ' \t'
+def has_whitespace(s: str) -> bool:
+    whitespace = " \t"
     return any(ch in whitespace for ch in s)
 
 
-def quote_mark(s):
+def quote_mark(s: str) -> tuple[str, str]:
     quote = '"'
+    value = s
     if '"' in s:
         quote = "'"
     if "'" in s:
-        quote = '`'
-    if '`' in s:
-        quote = '`'
-        s = s.replace('`', "'")
-    return quote, s
+        quote = "`"
+    if "`" in s:
+        quote = "`"
+        value = s.replace("`", "'")
+    return quote, value
+
+
+def starts_with_quote(s: str) -> bool:
+    quotes = "\"'`"
+    return len(s) > 0 and s[0] in quotes
+
+
+def starts_with_pipe(s: str) -> bool:
+    return len(s) > 0 and s[0] == "|"
+

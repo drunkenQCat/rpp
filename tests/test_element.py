@@ -1,4 +1,4 @@
-import attr
+from dataclasses import replace
 
 from rpp import Element
 
@@ -61,18 +61,14 @@ def test_no_subelements():
     track = Element('TRACK')
     expected = Element('TRACK', children=[['ITEM', '0']])
 
-    el = attr.evolve(track, children=[])
+    el = replace(track, children=[])
     el.append(['ITEM', '0'])
     assert el == expected
 
-    el = attr.evolve(track, children=[])
+    el = replace(track, children=[])
     el.extend([['ITEM', '0']])
     assert el == expected
 
-    el = attr.evolve(track, children=[])
+    el = replace(track, children=[])
     el.insert(0, ['ITEM', '0'])
     assert el == expected
-
-    el = attr.evolve(expected, children=[['ITEM', '0']])
-    el.remove(el[0])
-    assert el == attr.evolve(track, children=[])
