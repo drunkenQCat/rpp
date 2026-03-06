@@ -33,11 +33,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.dynamic]
 version = {attr = "rpp.__version__"}
 
+[tool.setuptools.packages.find]
+include = ["rpp*"]
+
+[tool.setuptools.package-data]
+rpp = ["grammars/*.lark"]
+
 [dependency-groups]
 dev = [
     "ipdb>=0.13.13",
     "pyright>=1.1.408",
 ]
 
-[tool.setuptools]
-packages = ["rpp"]
+# [tool.setuptools]
+# packages = ["rpp"]
+

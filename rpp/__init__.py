@@ -6,6 +6,7 @@ from .rpp import dump, dumps, loads, load
 from .tokenizer import tokenize
 
 
-__version__ = '0.5'
-__author__ = 'Sviatoslav Abakumov <dust.harvesting@gmail.com>'
-__all__ = ['dump', 'dumps', 'load', 'loads', 'Element', 'tokenize']
+__version__ = "0.6"
+__author__ = "Sviatoslav Abakumov <dust.harvesting@gmail.com>"
+__all__ = ["dump", "dumps", "load", "loads", "Element", "tokenize"]
+
