@@ -101,4 +101,3 @@ def iterate_element(element: Any, tag: Optional[str]) -> Generator[Any, None, No
             yield from item.iter(tag)
         elif tag is None:
             yield item
-

@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lark import Token
 
-from .utils import is_token, merge_split_values, merge_pending_floats, strip_quotes
+from .utils import is_token, merge_split_values, merge_pending_floats
 
 if TYPE_CHECKING:
-    from ..element import Element
+    pass
 
 
 def handle_element_children(children: list, tag: str) -> list:
@@ -172,7 +171,7 @@ def handle_attr_list(children: list) -> list[str]:
 
     for child in children:
         # Check for PendingFloat that needs merging with previous value
-        if result and hasattr(child, 'is_real_float') and not child.is_real_float:
+        if result and hasattr(child, "is_real_float") and not child.is_real_float:
             prev = result[-1]
             if isinstance(prev, str) and (prev.isdigit() or prev.startswith("-")):
                 merged = prev + child.value

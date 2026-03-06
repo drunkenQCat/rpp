@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import os
 from typing import Union, List, IO
-from lark import Lark, Token, Tree, Transformer, v_args
+from lark import Lark, Token, Transformer
 
 from ..element import Element
 from . import midi
 from ..models.grammar import PendingFloat
-from .utils import strip_quotes, is_token, merge_split_values, merge_pending_floats
+from .utils import strip_quotes, is_token
 from .handlers import (
     handle_element_children,
     handle_struct_as_content,

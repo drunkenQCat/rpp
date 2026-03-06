@@ -97,4 +97,3 @@ def test_no_subelements():
     el = replace(track, children=[])
     el.insert(0, ["ITEM", "0"])
     assert el == expected
-

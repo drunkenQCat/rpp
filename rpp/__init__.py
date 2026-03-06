@@ -9,4 +9,3 @@ from .tokenizer import tokenize
 __version__ = "0.6"
 __author__ = "Sviatoslav Abakumov <dust.harvesting@gmail.com>"
 __all__ = ["dump", "dumps", "load", "loads", "Element", "tokenize"]
-

@@ -85,4 +85,3 @@ def starts_with_quote(s: str) -> bool:
 
 def starts_with_pipe(s: str) -> bool:
     return len(s) > 0 and s[0] == "|"
-

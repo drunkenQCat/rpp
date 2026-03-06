@@ -5,7 +5,7 @@ Provides helper functions for quote stripping, token checking, and value merging
 
 from __future__ import annotations
 
-from lark import Token, Tree
+from lark import Token
 
 from ..models.grammar import PendingFloat
 

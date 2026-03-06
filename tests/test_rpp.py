@@ -225,4 +225,3 @@ def test_conversion(filename):
 
     proj = loads(raw_proj)
     assert dumps(proj) == raw_proj
-
