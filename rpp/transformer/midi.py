@@ -7,9 +7,9 @@ Provides loads/load functions to parse MIDI event strings from RPP files.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Union, List, IO
+from typing import List, IO
 from lark import Lark, Token, Tree, Transformer
 
 
@@ -106,7 +106,7 @@ class MIDIEventHandler:
             byte3=children[4],
         )
 
-    def event(self, children: List[MIDIEvent]) -> MIDIEvent:
+    def event(self, children: List[MIDIEvent]) -> MIDIEvent | None:
         """Return the MIDI event"""
         return children[0] if children else None
 
@@ -195,7 +195,7 @@ class MIDITransformer(Transformer):
             byte3=children[4],
         )
 
-    def midi__event(self, children: List[MIDIEvent]) -> MIDIEvent:
+    def midi__event(self, children: List[MIDIEvent]) -> MIDIEvent | None:
         return children[0] if children else None
 
     def midi__start(self, children: List[MIDIEvent]) -> List[MIDIEvent]:
@@ -371,4 +371,3 @@ def from_children(children: List) -> MIDIEvent:
             byte2=byte2,
             byte3=byte3,
         )
-
